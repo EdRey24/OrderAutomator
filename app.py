@@ -1,52 +1,69 @@
 from flask import Flask, request, jsonify
-import json
-
-
-class Item:
-    id: int
-    name: str
-    price: float
-    pdf_text: str
-    color: str
-
-    def __init__(self, id: int, name: str, price: float, pdf_text: str, color: str):
-        self.id = id
-        self.name = name
-        self.price = price
-        self.pdf_text = pdf_text
-        self.color = color
-
-    def toJSON(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "price": self.price,
-            "pdf_text": self.pdf_text,
-            "color": self.color,
-        }
-
-    def __repr__(self):
-        return f"Item(id={self.id}, name='{self.name}', price={self.price}, pdf_text='{self.pdf_text}', color='{self.color}')"
-
-
-items: list[Item] = []
-
-open_ID: int = 0
-
-
-def create_item(name: str, price: float, pdf_text: str, color: str):
-    global open_ID
-    newItem: Item = Item(open_ID, name, price, pdf_text, color)
-    open_ID += 1
-    items.append(newItem)
-
+import sqlite3
 
 app = Flask(__name__)
 
 
+def init_db():
+    conn = sqlite3.connect("items.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            price REAL NOT NULL,
+            pdf_text TEXT NOT NULL,
+            color TEXT NOT NULL
+        )
+    """
+    )
+    conn.commit()
+    conn.close()
+
+
+def seed_db():
+    conn = sqlite3.connect("items.db")
+    cursor = conn.cursor()
+    # Check if table is empty
+    cursor.execute("SELECT COUNT(*) FROM items")
+    count = cursor.fetchone()[0]
+    if count == 0:
+        # Insert sample items
+        sample_items = [
+            ("Apple", 0.50, "Fresh red apple", "#FF0000"),
+            ("Banana", 0.30, "Ripe yellow banana", "#FFFF00"),
+            ("Orange", 0.80, "Juicy orange", "#FFA500"),
+        ]
+        cursor.executemany(
+            "INSERT INTO items (name, price, pdf_text, color) VALUES (?, ?, ?, ?)",
+            sample_items,
+        )
+        conn.commit()
+        print("Sample items inserted.")
+    conn.close()
+
+
 @app.get("/api/items")
 def index():
-    return jsonify([item.toJSON() for item in items])
+    conn = sqlite3.connect("items.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, price, pdf_text, color FROM items")
+    rows = cursor.fetchall()
+    conn.close()
+
+    items = []
+    for row in rows:
+        items.append(
+            {
+                "id": row[0],
+                "name": row[1],
+                "price": row[2],
+                "pdf_text": row[3],
+                "color": row[4],
+            }
+        )
+    return jsonify(items)
 
 
 @app.post("/api/items")
@@ -60,12 +77,27 @@ def add_item():
     if name is None or price is None or price < 0 or pdf_text is None or color is None:
         return {"error": "Missing fields"}, 400
 
-    create_item(name, price, pdf_text, color)
+    conn = sqlite3.connect("items.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO items (name, price, pdf_text, color) VALUES (?, ?, ?, ?)",
+        (name, price, pdf_text, color),
+    )
+    new_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
 
-    return {"message": "Item created", "item": items[-1]}, 201
+    new_item = {
+        "id": new_id,
+        "name": name,
+        "price": price,
+        "pdf_text": pdf_text,
+        "color": color,
+    }
+    return jsonify(new_item), 201
 
 
 if __name__ == "__main__":
-    create_item("test", 2.02, "test description", "red")
-    create_item("test", 1.02, "test description", "blue")
+    init_db()
+    seed_db()
     app.run(debug=True)
