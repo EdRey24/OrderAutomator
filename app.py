@@ -158,6 +158,55 @@ def finish_order():
     )
 
 
+@app.put("/api/items/<int:item_id>")
+def update_item(item_id):
+    data = request.get_json()
+    name = data.get("name")
+    price = data.get("price")
+    pdf_text = data.get("pdf_text")
+    htsus = data.get("htsus")
+
+    if name is None or price is None or price < 0 or pdf_text is None or htsus is None:
+        return {"error": "Missing or invalid fields"}, 400
+
+    conn = sqlite3.connect("items.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE items SET name=?, price=?, pdf_text=?, htsus=? WHERE id=?",
+        (name, price, pdf_text, htsus, item_id),
+    )
+    conn.commit()
+    rows_affected = cursor.rowcount
+    conn.close()
+
+    if rows_affected == 0:
+        return {"error": "Item not found"}, 404
+
+    updated_item = {
+        "id": item_id,
+        "name": name,
+        "price": price,
+        "pdf_text": pdf_text,
+        "htsus": htsus,
+    }
+    return jsonify(updated_item), 200
+
+
+@app.delete("/api/items/<int:item_id>")
+def delete_item(item_id):
+    conn = sqlite3.connect("items.db")
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM items WHERE id=?", (item_id,))
+    conn.commit()
+    rows_affected = cursor.rowcount
+    conn.close()
+
+    if rows_affected == 0:
+        return {"error": "Item not found"}, 404
+
+    return "", 204
+
+
 if __name__ == "__main__":
     init_db()
     app.run(debug=True)
