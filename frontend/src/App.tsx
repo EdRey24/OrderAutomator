@@ -150,6 +150,9 @@ export default function App() {
     }
   };
 
+  if (loading) return <div>Loading items...</div>;
+  if (error) return <div>Error: {error}</div>;
+
   return (
     <>
       <ItemGrid
