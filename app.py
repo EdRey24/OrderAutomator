@@ -5,18 +5,34 @@ from pypdf import PdfReader, PdfWriter
 from datetime import datetime, timedelta
 import sqlite3
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///items.db")
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
+
+
+def get_db_connection():
+    if DATABASE_URL.startswith("sqlite://"):
+        conn = sqlite3.connect(DATABASE_URL.replace("sqlite:///", ""))
+    else:
+        import psycopg2
+
+        conn = psycopg2.connect(DATABASE_URL)
+    return conn
+
 
 def init_db():
-    conn = sqlite3.connect("items.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             price REAL NOT NULL,
             pdf_text TEXT NOT NULL,
@@ -30,7 +46,7 @@ def init_db():
 
 @app.get("/api/items")
 def index():
-    conn = sqlite3.connect("items.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT id, name, price, pdf_text, htsus FROM items")
     rows = cursor.fetchall()
@@ -61,7 +77,7 @@ def add_item():
     if name is None or price is None or price < 0 or pdf_text is None or htsus is None:
         return {"error": "Missing fields"}, 400
 
-    conn = sqlite3.connect("items.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO items (name, price, pdf_text, htsus) VALUES (?, ?, ?, ?)",
@@ -99,7 +115,7 @@ def finish_order():
         except ValueError:
             arrival_date = datetime.now().strftime("%m/%d/%y")
 
-    conn = sqlite3.connect("items.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
     detailed_order = []
     for item in order_items:
@@ -186,7 +202,7 @@ def update_item(item_id):
     if name is None or price is None or price < 0 or pdf_text is None or htsus is None:
         return {"error": "Missing or invalid fields"}, 400
 
-    conn = sqlite3.connect("items.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
         "UPDATE items SET name=?, price=?, pdf_text=?, htsus=? WHERE id=?",
@@ -211,7 +227,7 @@ def update_item(item_id):
 
 @app.delete("/api/items/<int:item_id>")
 def delete_item(item_id):
-    conn = sqlite3.connect("items.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM items WHERE id=?", (item_id,))
     conn.commit()
