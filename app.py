@@ -2,6 +2,7 @@ import io
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from pypdf import PdfReader, PdfWriter
+from datetime import datetime, timedelta
 import sqlite3
 import os
 
@@ -84,6 +85,19 @@ def add_item():
 def finish_order():
     data = request.get_json()
     order_items = data["items"]
+    arrival_date = data.get("arrival_date")
+
+    current_date = datetime.now().strftime("%m/%d/%y")
+
+    if not arrival_date:
+        tomorrow = datetime.now() + timedelta(days=1)
+        arrival_date = tomorrow.strftime("%m/%d/%y")
+    else:
+        try:
+            parsed = datetime.strptime(arrival_date, "%Y-%m-%d")
+            arrival_date = parsed.strftime("%m/%d/%y")
+        except ValueError:
+            arrival_date = datetime.now().strftime("%m/%d/%y")
 
     conn = sqlite3.connect("items.db")
     cursor = conn.cursor()
@@ -143,6 +157,9 @@ def finish_order():
             "F[0].P1[0].F[0]-P1[0]-description[0]": description_multiline,
             "F[0].P1[0].F[0]-P1[0]-val[0]": value_multiline,
             "F[0].P1[0].F[0]-P1[0]-HTSUSheadingNumber[0]": htsus_multiline,
+            "F[0].P1[0].F[0]-P1[0]-Date[0]": current_date,
+            "F[0].P1[0].F[0]-P1[0]-arrivaldate[0]": arrival_date,
+            "F[0].P1[0].F[0]-P1[0]-Date16[0]": current_date,
         },
     )
 

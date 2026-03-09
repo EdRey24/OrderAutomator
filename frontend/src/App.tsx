@@ -10,6 +10,13 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [arrivalDate, setArrivalDate] = useState(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  });
 
   useEffect(() => {
     fetch("http://127.0.0.1:5000/api/items")
@@ -104,7 +111,10 @@ export default function App() {
       const response = await fetch("http://127.0.0.1:5000/api/finish_order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: orderItems }),
+        body: JSON.stringify({
+          items: orderItems,
+          arrival_date: arrivalDate,
+        }),
       });
 
       if (!response.ok) {
@@ -151,6 +161,15 @@ export default function App() {
         onDelete={handleDeleteItem}
       />
       <AddItemModal onSubmit={handleAddItem} />
+
+      <label htmlFor="arrivalDate">Arrival Date:</label>
+      <input
+        id="arrivalDate"
+        type="date"
+        value={arrivalDate}
+        onChange={(e) => setArrivalDate(e.target.value)}
+      />
+
       <button onClick={handleFinishOrder} style={{ marginTop: "1.6vw" }}>
         Finish Order
       </button>
