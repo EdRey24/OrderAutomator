@@ -1,5 +1,5 @@
 import io
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, send_from_directory
 from flask_cors import CORS
 from pypdf import PdfReader, PdfWriter
 from datetime import datetime, timedelta
@@ -14,6 +14,7 @@ CORS(app)
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///items.db")
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
+frontend_dist = os.path.join(os.path.dirname(__file__), "frontend", "dist")
 
 
 def is_sqlite():
@@ -280,6 +281,15 @@ def delete_item(item_id):
         return {"error": "Item not found"}, 404
 
     return "", 204
+
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_frontend(path):
+    if path and os.path.exists(os.path.join(frontend_dist, path)):
+        return send_from_directory(frontend_dist, path)
+    else:
+        return send_from_directory(frontend_dist, "index.html")
 
 
 init_db()
