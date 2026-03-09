@@ -3,5 +3,5 @@ export interface Item {
     name: string;
     price: number;
     pdf_text: string;
-    color: string;
+    htsus: string;
 }
