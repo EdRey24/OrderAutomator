@@ -20,16 +20,12 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install uv (using pip, but you could also use the official installer)
+# Install uv
 RUN pip install --no-cache-dir uv
 
-# Copy dependency specification (using pyproject.toml if you have one, else requirements)
+# Copy dependency specification
 COPY pyproject.toml uv.lock* requirements.txt ./
 
-# If you have pyproject.toml, install using uv sync (recommended)
-# RUN uv sync --no-dev --no-cache
-
-# Or if you prefer requirements.txt:
 RUN uv pip install --system --no-cache -r requirements.txt
 
 # Copy the entire backend (including the frontend build from stage 1)
