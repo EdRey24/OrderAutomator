@@ -1,6 +1,19 @@
-items.db
-*.db
-*.pdf
-*.env*
+# Python
 __pycache__/
+*.pyc
+instance/
+.env
+.venv/
+venv/
+env/
+
+# Frontend
 frontend/node_modules/
+frontend/dist/
+frontend/.env.development
+frontend/.env.production
+
+# Database
+*.db
+*.db-journal
+templates/CBP Form.pdf
