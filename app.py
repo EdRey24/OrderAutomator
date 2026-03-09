@@ -282,6 +282,8 @@ def delete_item(item_id):
     return "", 204
 
 
+init_db()
+
 if __name__ == "__main__":
     init_db()
     app.run(debug=True)
