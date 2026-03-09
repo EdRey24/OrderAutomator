@@ -6,6 +6,8 @@ export default function ItemBox({
   quantity,
   onAdd,
   onQuantityChange,
+  onEdit,
+  onDelete,
 }: ItemBoxProps) {
   const [inputValue, setInputValue] = useState<string>(quantity.toString());
 
@@ -35,6 +37,12 @@ export default function ItemBox({
 
   return (
     <div style={boxStyle}>
+      <button onClick={() => onEdit(item)} title="Edit item">
+        ✎
+      </button>
+      <button onClick={() => onDelete(item.id)} title="Delete item">
+        🗑
+      </button>
       <h3>{item.name}</h3>
       <p>${item.price.toFixed(2)}</p>
       <p>{item.pdf_text}</p>

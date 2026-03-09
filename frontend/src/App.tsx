@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import type { Item } from "./interfaces/Item";
 import ItemGrid from "./components/ItemGrid";
 import AddItemModal from "./components/AddItemModal";
+import EditItemModal from "./components/EditItemModal";
 
 export default function App() {
   const [items, setItems] = useState<Item[]>([]);
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
 
   useEffect(() => {
     fetch("http://127.0.0.1:5000/api/items")
@@ -45,6 +47,45 @@ export default function App() {
       setItems((prev) => [...prev, createdItem]);
     } catch (err) {
       alert("Error adding item: " + (err as Error).message);
+    }
+  };
+
+  const handleEditItem = (item: Item) => {
+    setEditingItem(item);
+  };
+
+  const handleUpdateItem = async (id: number, updated: Omit<Item, "id">) => {
+    try {
+      const response = await fetch(`http://127.0.0.1:5000/api/items/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+      if (!response.ok) throw new Error("Failed to update item");
+      const updatedItem = await response.json();
+      setItems((prev) =>
+        prev.map((item) => (item.id === id ? updatedItem : item)),
+      );
+      setEditingItem(null);
+    } catch (err) {
+      alert("Error updating item: " + (err as Error).message);
+    }
+  };
+
+  const handleDeleteItem = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this item?")) return;
+    try {
+      const response = await fetch(`http://127.0.0.1:5000/api/items/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to delete item");
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      if (quantities[id] !== undefined) {
+        const { [id]: _, ...rest } = quantities;
+        setQuantities(rest);
+      }
+    } catch (err) {
+      alert("Error deleting item: " + (err as Error).message);
     }
   };
 
@@ -106,11 +147,22 @@ export default function App() {
         quantities={quantities}
         onAdd={handleAdd}
         onQuantityChange={handleQuantityChange}
+        onEdit={handleEditItem}
+        onDelete={handleDeleteItem}
       />
       <AddItemModal onSubmit={handleAddItem} />
       <button onClick={handleFinishOrder} style={{ marginTop: "1.6vw" }}>
         Finish Order
       </button>
+
+      {editingItem && (
+        <EditItemModal
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+          onSave={handleAddItem}
+          onUpdate={handleUpdateItem}
+        />
+      )}
     </>
   );
 }

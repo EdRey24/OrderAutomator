@@ -6,6 +6,8 @@ export default function ItemGrid({
   quantities,
   onAdd,
   onQuantityChange,
+  onEdit,
+  onDelete,
 }: ItemGridProps) {
   return (
     <div style={{ display: "flex", flexWrap: "wrap" }}>
@@ -16,6 +18,8 @@ export default function ItemGrid({
           quantity={quantities[item.id] || 0}
           onAdd={onAdd}
           onQuantityChange={onQuantityChange}
+          onEdit={onEdit}
+          onDelete={onDelete}
         />
       ))}
     </div>

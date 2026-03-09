@@ -5,5 +5,6 @@ export interface ItemBoxProps {
     quantity: number;
     onAdd: (id: number) => void;
     onQuantityChange: (id: number, newQuantity: number) => void;
-
+    onEdit: (item: Item) => void;
+    onDelete: (id: number) => void;
 }
