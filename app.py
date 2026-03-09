@@ -1,7 +1,12 @@
-from flask import Flask, request, jsonify
+import io
+from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
+from pypdf import PdfReader, PdfWriter
 import sqlite3
+import os
 
 app = Flask(__name__)
+CORS(app)
 
 
 def init_db():
@@ -14,7 +19,7 @@ def init_db():
             name TEXT NOT NULL,
             price REAL NOT NULL,
             pdf_text TEXT NOT NULL,
-            color TEXT NOT NULL
+            htsus TEXT NOT NULL
         )
     """
     )
@@ -22,33 +27,11 @@ def init_db():
     conn.close()
 
 
-def seed_db():
-    conn = sqlite3.connect("items.db")
-    cursor = conn.cursor()
-    # Check if table is empty
-    cursor.execute("SELECT COUNT(*) FROM items")
-    count = cursor.fetchone()[0]
-    if count == 0:
-        # Insert sample items
-        sample_items = [
-            ("Apple", 0.50, "Fresh red apple", "#FF0000"),
-            ("Banana", 0.30, "Ripe yellow banana", "#FFFF00"),
-            ("Orange", 0.80, "Juicy orange", "#FFA500"),
-        ]
-        cursor.executemany(
-            "INSERT INTO items (name, price, pdf_text, color) VALUES (?, ?, ?, ?)",
-            sample_items,
-        )
-        conn.commit()
-        print("Sample items inserted.")
-    conn.close()
-
-
 @app.get("/api/items")
 def index():
     conn = sqlite3.connect("items.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, price, pdf_text, color FROM items")
+    cursor.execute("SELECT id, name, price, pdf_text, htsus FROM items")
     rows = cursor.fetchall()
     conn.close()
 
@@ -60,7 +43,7 @@ def index():
                 "name": row[1],
                 "price": row[2],
                 "pdf_text": row[3],
-                "color": row[4],
+                "htsus": row[4],
             }
         )
     return jsonify(items)
@@ -72,16 +55,16 @@ def add_item():
     name: str = data.get("name")
     price: float = data.get("price")
     pdf_text: str = data.get("pdf_text")
-    color: str = data.get("color")
+    htsus: str = data.get("htsus")
 
-    if name is None or price is None or price < 0 or pdf_text is None or color is None:
+    if name is None or price is None or price < 0 or pdf_text is None or htsus is None:
         return {"error": "Missing fields"}, 400
 
     conn = sqlite3.connect("items.db")
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO items (name, price, pdf_text, color) VALUES (?, ?, ?, ?)",
-        (name, price, pdf_text, color),
+        "INSERT INTO items (name, price, pdf_text, htsus) VALUES (?, ?, ?, ?)",
+        (name, price, pdf_text, htsus),
     )
     new_id = cursor.lastrowid
     conn.commit()
@@ -92,12 +75,89 @@ def add_item():
         "name": name,
         "price": price,
         "pdf_text": pdf_text,
-        "color": color,
+        "htsus": htsus,
     }
     return jsonify(new_item), 201
 
 
+@app.post("/api/finish_order")
+def finish_order():
+    data = request.get_json()
+    order_items = data["items"]
+
+    conn = sqlite3.connect("items.db")
+    cursor = conn.cursor()
+    detailed_order = []
+    for item in order_items:
+        cursor.execute(
+            "SELECT name, price, pdf_text, htsus FROM items WHERE id=?", (item["id"],)
+        )
+        row = cursor.fetchone()
+        if row:
+            detailed_order.append(
+                {
+                    "name": row[0],
+                    "price": row[1],
+                    "pdf_text": row[2],
+                    "htsus": row[3],
+                    "quantity": item["quantity"],
+                }
+            )
+    conn.close()
+
+    if not detailed_order:
+        return {"error": "No valid items"}, 400
+
+    description_lines = []
+    value_lines = []
+    htsus_lines = []
+
+    for item in detailed_order:
+        desc_line = f"{item['quantity']} {item['pdf_text']}"
+        description_lines.append(desc_line)
+
+        total = item["price"] * item["quantity"]
+        value_lines.append(f"${total:.2f}")
+
+        htsus_lines.append(item["htsus"])
+
+    description_multiline = "\n".join(description_lines)
+    value_multiline = "\n".join(value_lines)
+    htsus_multiline = "\n".join(htsus_lines)
+
+    template_path = os.path.join("templates", "CBP Form.pdf")
+
+    reader = PdfReader(template_path)
+    writer = PdfWriter()
+    writer.clone_document_from_reader(reader)
+
+    # Remove all pages except the first
+    for i in range(len(writer.pages) - 1, 0, -1):
+        writer.remove_page(i)
+
+    page = writer.pages[0]
+
+    writer.update_page_form_field_values(
+        page,
+        {
+            "F[0].P1[0].F[0]-P1[0]-description[0]": description_multiline,
+            "F[0].P1[0].F[0]-P1[0]-val[0]": value_multiline,
+            "F[0].P1[0].F[0]-P1[0]-HTSUSheadingNumber[0]": htsus_multiline,
+        },
+    )
+
+    buffer = io.BytesIO()
+    writer.write(buffer)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="filled_order.pdf",
+        mimetype="application/pdf",
+    )
+
+
 if __name__ == "__main__":
     init_db()
-    seed_db()
     app.run(debug=True)
