@@ -16,6 +16,24 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///items.db")
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
 
 
+def is_sqlite():
+    return DATABASE_URL.startswith("sqlite://")
+
+
+def execute_query(cursor, query, params=None):
+    if is_sqlite():
+        if params:
+            cursor.execute(query, params)
+        else:
+            cursor.execute(query)
+    else:
+        pg_query = query.replace("?", "%s")
+        if params:
+            cursor.execute(pg_query, params)
+        else:
+            cursor.execute(pg_query)
+
+
 def get_db_connection():
     if DATABASE_URL.startswith("sqlite://"):
         conn = sqlite3.connect(DATABASE_URL.replace("sqlite:///", ""))
@@ -79,12 +97,20 @@ def add_item():
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO items (name, price, pdf_text, htsus) VALUES (?, ?, ?, ?)",
-        (name, price, pdf_text, htsus),
-    )
-    new_id = cursor.lastrowid
-    conn.commit()
+    if is_sqlite():
+        cursor.execute(
+            "INSERT INTO items (name, price, pdf_text, htsus) VALUES (?, ?, ?, ?)",
+            (name, price, pdf_text, htsus),
+        )
+        new_id = cursor.lastrowid
+        conn.commit()
+    else:
+        cursor.execute(
+            "INSERT INTO items (name, price, pdf_text, htsus) VALUES (%s, %s, %s, %s) RETURNING id",
+            (name, price, pdf_text, htsus),
+        )
+        new_id = cursor.fetchone()[0]
+        conn.commit()
     conn.close()
 
     new_item = {
@@ -119,9 +145,16 @@ def finish_order():
     cursor = conn.cursor()
     detailed_order = []
     for item in order_items:
-        cursor.execute(
-            "SELECT name, price, pdf_text, htsus FROM items WHERE id=?", (item["id"],)
-        )
+        if is_sqlite():
+            cursor.execute(
+                "SELECT name, price, pdf_text, htsus FROM items WHERE id=?",
+                (item["id"],),
+            )
+        else:
+            cursor.execute(
+                "SELECT name, price, pdf_text, htsus FROM items WHERE id=%s",
+                (item["id"],),
+            )
         row = cursor.fetchone()
         if row:
             detailed_order.append(
@@ -204,10 +237,16 @@ def update_item(item_id):
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE items SET name=?, price=?, pdf_text=?, htsus=? WHERE id=?",
-        (name, price, pdf_text, htsus, item_id),
-    )
+    if is_sqlite():
+        cursor.execute(
+            "UPDATE items SET name=?, price=?, pdf_text=?, htsus=? WHERE id=?",
+            (name, price, pdf_text, htsus, item_id),
+        )
+    else:
+        cursor.execute(
+            "UPDATE items SET name=%s, price=%s, pdf_text=%s, htsus=%s WHERE id=%s",
+            (name, price, pdf_text, htsus, item_id),
+        )
     conn.commit()
     rows_affected = cursor.rowcount
     conn.close()
@@ -229,7 +268,10 @@ def update_item(item_id):
 def delete_item(item_id):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM items WHERE id=?", (item_id,))
+    if is_sqlite():
+        cursor.execute("DELETE FROM items WHERE id=?", (item_id,))
+    else:
+        cursor.execute("DELETE FROM items WHERE id=%s", (item_id,))
     conn.commit()
     rows_affected = cursor.rowcount
     conn.close()
