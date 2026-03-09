@@ -16,4 +16,3 @@ frontend/.env.production
 # Database
 *.db
 *.db-journal
-templates/CBP Form.pdf
