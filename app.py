@@ -130,8 +130,6 @@ def finish_order():
     order_items = data["items"]
     arrival_date = data.get("arrival_date")
 
-    current_date = datetime.now().strftime("%m/%d/%y")
-
     if not arrival_date:
         tomorrow = datetime.now() + timedelta(days=1)
         arrival_date = tomorrow.strftime("%m/%d/%y")
@@ -207,9 +205,9 @@ def finish_order():
             "F[0].P1[0].F[0]-P1[0]-description[0]": description_multiline,
             "F[0].P1[0].F[0]-P1[0]-val[0]": value_multiline,
             "F[0].P1[0].F[0]-P1[0]-HTSUSheadingNumber[0]": htsus_multiline,
-            "F[0].P1[0].F[0]-P1[0]-Date[0]": current_date,
+            "F[0].P1[0].F[0]-P1[0]-Date[0]": arrival_date,
             "F[0].P1[0].F[0]-P1[0]-arrivaldate[0]": arrival_date,
-            "F[0].P1[0].F[0]-P1[0]-Date16[0]": current_date,
+            "F[0].P1[0].F[0]-P1[0]-Date16[0]": arrival_date,
         },
     )
 
