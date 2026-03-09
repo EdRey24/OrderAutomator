@@ -3,6 +3,7 @@ import type { Item } from "./interfaces/Item";
 import ItemGrid from "./components/ItemGrid";
 import AddItemModal from "./components/AddItemModal";
 import EditItemModal from "./components/EditItemModal";
+import { API_BASE } from "./config";
 
 export default function App() {
   const [items, setItems] = useState<Item[]>([]);
@@ -19,7 +20,7 @@ export default function App() {
   });
 
   useEffect(() => {
-    fetch("http://127.0.0.1:5000/api/items")
+    fetch(`${API_BASE}/items`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch");
         return res.json();
@@ -44,7 +45,7 @@ export default function App() {
 
   const handleAddItem = async (newItem: Omit<Item, "id">) => {
     try {
-      const response = await fetch("http://127.0.0.1:5000/api/items", {
+      const response = await fetch(`${API_BASE}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newItem),
@@ -63,7 +64,7 @@ export default function App() {
 
   const handleUpdateItem = async (id: number, updated: Omit<Item, "id">) => {
     try {
-      const response = await fetch(`http://127.0.0.1:5000/api/items/${id}`, {
+      const response = await fetch(`${API_BASE}/items/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updated),
@@ -82,7 +83,7 @@ export default function App() {
   const handleDeleteItem = async (id: number) => {
     if (!confirm("Are you sure you want to delete this item?")) return;
     try {
-      const response = await fetch(`http://127.0.0.1:5000/api/items/${id}`, {
+      const response = await fetch(`${API_BASE}/items/${id}`, {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Failed to delete item");
@@ -108,7 +109,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch("http://127.0.0.1:5000/api/finish_order", {
+      const response = await fetch(`${API_BASE}/finish_order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
