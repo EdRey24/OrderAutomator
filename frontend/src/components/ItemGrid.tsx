@@ -1,5 +1,5 @@
-import ItemBox from "./ItemBox.tsx";
-import type { ItemGridProps } from "../interfaces/ItemGridProps.ts";
+import ItemBox from "./ItemBox";
+import type { ItemGridProps } from "../interfaces/ItemGridProps";
 
 export default function ItemGrid({
   items,
