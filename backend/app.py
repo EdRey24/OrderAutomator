@@ -37,8 +37,25 @@ def init_db():
             name TEXT NOT NULL,
             price REAL NOT NULL,
             pdf_text TEXT NOT NULL,
-            htsus TEXT NOT NULL
+            htsus TEXT NOT NULL,
+            display_order INTEGER DEFAULT 0 
         )
+    """
+    )
+    # For existing installations, add the column if it doesn't exist
+    cur.execute(
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name='items' AND column_name='display_order'
+            ) THEN
+                ALTER TABLE items ADD COLUMN display_order INTEGER DEFAULT 0;
+                -- Set initial order based on current id (or any deterministic order)
+                UPDATE items SET display_order = id;
+            END IF;
+        END $$;
     """
     )
     conn.commit()
@@ -54,11 +71,35 @@ def index():
     """Return all items as JSON."""
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute("SELECT * FROM items")
+    cur.execute("SELECT * FROM items ORDER BY display_order")
     items = cur.fetchall()
     cur.close()
     conn.close()
     return jsonify(items)
+
+
+@app.post("/api/items/reorder")
+def reorder_items():
+    data = request.get_json()
+    ordered_ids = data.get("ordered_ids")
+    if not isinstance(ordered_ids, list):
+        return {"error": "ordered_ids must be a list"}, 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        for index, item_id in enumerate(ordered_ids):
+            cur.execute(
+                "UPDATE items SET display_order = %s WHERE id = %s", (index, item_id)
+            )
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        return {"error": str(e)}, 500
+    finally:
+        cur.close()
+        conn.close()
+    return {"message": "Order updated"}, 200
 
 
 @app.post("/api/items")

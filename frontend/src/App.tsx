@@ -97,6 +97,28 @@ export default function App() {
     }
   };
 
+  const handleReorder = async (orderedIds: number[]) => {
+    try {
+      setItems((prevItems) => {
+        const itemMap = new Map(prevItems.map((item) => [item.id, item]));
+        return orderedIds
+          .map((id) => itemMap.get(id))
+          .filter(Boolean) as Item[];
+      });
+      const response = await fetch(`${API_BASE}/items/reorder`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ordered_ids: orderedIds }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save order");
+      }
+    } catch (err) {
+      alert("Error saving order: " + (err as Error).message);
+    }
+  };
+
   const handleFinishOrder = async () => {
     const orderItems = Object.entries(quantities).map(([id, qty]) => ({
       id: parseInt(id),
@@ -163,6 +185,7 @@ export default function App() {
         onQuantityChange={handleQuantityChange}
         onEdit={handleEditItem}
         onDelete={handleDeleteItem}
+        onReorder={handleReorder}
       />
       <AddItemModal onSubmit={handleAddItem} />
 

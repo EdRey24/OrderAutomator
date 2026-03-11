@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import type { ItemBoxProps } from "../interfaces/ItemBoxProps";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 export default function ItemBox({
   item,
@@ -10,6 +12,15 @@ export default function ItemBox({
   onDelete,
 }: ItemBoxProps) {
   const [inputValue, setInputValue] = useState<string>(quantity.toString());
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
 
   // Sync local state when quantity prop changes (e.g., from +/- buttons)
   useEffect(() => {
@@ -23,6 +34,9 @@ export default function ItemBox({
     borderRadius: "4px",
     margin: "0.41vw",
     minWidth: "150px",
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
   };
 
   const handleBlur = () => {
@@ -36,13 +50,29 @@ export default function ItemBox({
   };
 
   return (
-    <div style={boxStyle}>
-      <button onClick={() => onEdit(item)} title="Edit item">
-        ✎
-      </button>
-      <button onClick={() => onDelete(item.id)} title="Delete item">
-        🗑
-      </button>
+    <div ref={setNodeRef} style={boxStyle}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
+          marginBottom: "8px",
+        }}
+      >
+        <button onClick={() => onEdit(item)} title="Edit item">
+          ✎
+        </button>
+        <button onClick={() => onDelete(item.id)} title="Delete item">
+          🗑
+        </button>
+        <div
+          {...attributes}
+          {...listeners}
+          style={{ cursor: "grab", marginLeft: "auto", fontSize: "1.2rem" }}
+        >
+          ⠿
+        </div>
+      </div>
       <h3>{item.name}</h3>
       <p>${item.price.toFixed(2)}</p>
       <p>{item.pdf_text}</p>

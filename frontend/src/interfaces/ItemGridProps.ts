@@ -7,4 +7,5 @@ export interface ItemGridProps {
     onQuantityChange: (id: number, newQuantity: number) => void;
     onEdit: (item: Item) => void;
     onDelete: (id: number) => void;
+    onReorder?: (orderIds: number[]) => void;
 }
