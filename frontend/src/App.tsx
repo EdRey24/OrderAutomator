@@ -4,6 +4,7 @@ import ItemGrid from "./components/ItemGrid";
 import AddItemModal from "./components/AddItemModal";
 import EditItemModal from "./components/EditItemModal";
 import { API_BASE } from "./config";
+import SettingsModal from "./components/SettingsModal";
 
 export default function App() {
   const [items, setItems] = useState<Item[]>([]);
@@ -18,6 +19,7 @@ export default function App() {
     const day = String(today.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   });
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/items`)
@@ -197,9 +199,24 @@ export default function App() {
         onChange={(e) => setArrivalDate(e.target.value)}
       />
 
+      <button
+        onClick={() => setShowSettings(true)}
+        style={{ marginLeft: "10px" }}
+      >
+        Crossing Settings
+      </button>
+
       <button onClick={handleFinishOrder} style={{ marginTop: "1.6vw" }}>
         Finish Order
       </button>
+
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        onSave={() => {
+          console.log("Settings saved");
+        }}
+      />
 
       {editingItem && (
         <EditItemModal

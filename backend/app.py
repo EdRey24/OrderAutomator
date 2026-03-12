@@ -45,17 +45,22 @@ def init_db():
     # For existing installations, add the column if it doesn't exist
     cur.execute(
         """
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
-                WHERE table_name='items' AND column_name='display_order'
-            ) THEN
-                ALTER TABLE items ADD COLUMN display_order INTEGER DEFAULT 0;
-                -- Set initial order based on current id (or any deterministic order)
-                UPDATE items SET display_order = id;
-            END IF;
-        END $$;
+        CREATE TABLE IF NOT EXISTS user_settings (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            port_code TEXT,
+            vessel TEXT,
+            country_of_export TEXT,
+            marks_numbers TEXT,
+            importer_first_name TEXT,
+            importer_last_name TEXT,
+            importer_address TEXT
+        )
+    """
+    )
+    cur.execute(
+        """
+        INSERT INTO user_settings (id)
+        SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM user_settings WHERE id = 1)
     """
     )
     conn.commit()
@@ -172,6 +177,11 @@ def finish_order():
                 }
             )
     cur.close()
+
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM user_settings WHERE id = 1")
+    settings = cur.fetchone()
+    cur.close()
     conn.close()
 
     if not detailed_order:
@@ -189,6 +199,21 @@ def finish_order():
     value_multiline = "\n".join(value_lines)
     htsus_multiline = "\n".join(htsus_lines)
 
+    importer_parts = []
+    if settings and settings.get("importer_first_name"):
+        importer_parts.append(settings["importer_first_name"])
+    if settings and settings.get("importer_last_name"):
+        importer_parts.append(settings["importer_last_name"])
+    importer_name = " ".join(importer_parts)
+    if settings and settings.get("importer_address"):
+        importer_record = (
+            f"{importer_name} {settings['importer_address']}"
+            if importer_name
+            else settings["importer_address"]
+        )
+    else:
+        importer_record = importer_name
+
     template_path = os.path.join("templates", "CBP Form.pdf")
     reader = PdfReader(template_path)
     writer = PdfWriter()
@@ -201,11 +226,24 @@ def finish_order():
     writer.update_page_form_field_values(
         page,
         {
+            "F[0].P1[0].F[0]-P1[0]-portcode[0]": (
+                (settings.get("port_code") or "") if settings else ""
+            ),
+            "F[0].P1[0].F[0]-P1[0]-Date[0]": arrival_date,
+            "F[0].P1[0].F[0]-P1[0]-vessel[0]": (
+                (settings.get("vessel") or "") if settings else ""
+            ),
+            "F[0].P1[0].F[0]-P1[0]-arrivaldate[0]": arrival_date,
+            "F[0].P1[0].F[0]-P1[0]-countryofexportation[0]": (
+                (settings.get("country_of_export") or "") if settings else ""
+            ),
+            "F[0].P1[0].F[0]-P1[0]-MarsandNumbers[0]": (
+                (settings.get("marks_numbers") or "") if settings else ""
+            ),
             "F[0].P1[0].F[0]-P1[0]-description[0]": description_multiline,
             "F[0].P1[0].F[0]-P1[0]-val[0]": value_multiline,
             "F[0].P1[0].F[0]-P1[0]-HTSUSheadingNumber[0]": htsus_multiline,
-            "F[0].P1[0].F[0]-P1[0]-Date[0]": arrival_date,
-            "F[0].P1[0].F[0]-P1[0]-arrivaldate[0]": arrival_date,
+            "F[0].P1[0].F[0]-P1[0]-ImporterRecord[0]": importer_record,
             "F[0].P1[0].F[0]-P1[0]-Date16[0]": arrival_date,
         },
     )
@@ -272,6 +310,56 @@ def delete_item(item_id):
         return {"error": "Item not found"}, 404
 
     return "", 204
+
+
+@app.get("/api/settings")
+def get_settings():
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM user_settings WHERE id = 1")
+    settings = cur.fetchone()
+    cur.close()
+    conn.close()
+    if settings is None:
+        return {"error": "Settings not found"}, 404
+    settings.pop("id", None)
+    return jsonify(settings)
+
+
+@app.post("/api/settings")
+def update_settings():
+    data = request.get_json()
+    allowed_fields = [
+        "port_code",
+        "vessel",
+        "country_of_export",
+        "marks_numbers",
+        "importer_first_name",
+        "importer_last_name",
+        "importer_address",
+    ]
+    set_clause = ", ".join(
+        f"{field} = %({field})s" for field in allowed_fields if field in data
+    )
+    if not set_clause:
+        return {"error": "No valid fields provided"}, 400
+    values = {field: data.get(field) for field in allowed_fields if field in data}
+    values["id"] = 1
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        f"""
+        UPDATE user_settings
+        SET {set_clause}
+        WHERE id = %(id)s
+    """,
+        values,
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"message": "Settings updated"}, 200
 
 
 @app.route("/", defaults={"path": ""})
