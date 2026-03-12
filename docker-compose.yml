@@ -20,7 +20,7 @@ services:
       retries: 5
 
   app:
-    build: .
+    build: edwardreyna/orderautomator:latest
     container_name: python_app_container
     restart: unless-stopped
     depends_on:
