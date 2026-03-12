@@ -1,4 +1,4 @@
-version: "3.8"
+name: order-automator
 
 services:
   db:
@@ -19,8 +19,8 @@ services:
       timeout: 5s
       retries: 5
 
-  app:
-    build: edwardreyna/orderautomator:latest
+  order-automator-app:
+    image: edwardreyna/orderautomator:latest
     container_name: python_app_container
     restart: unless-stopped
     depends_on:
