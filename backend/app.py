@@ -64,12 +64,6 @@ def init_db():
         SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM user_settings WHERE id = 1)
     """
     )
-    cur.execute(
-        """
-        ALTER TABLE items
-        ADD COLUMN IF NOT EXISTS bg_color TEXT DEFAULT '#f0f0f0'
-    """
-    )
     conn.commit()
     cur.close()
     conn.close()
