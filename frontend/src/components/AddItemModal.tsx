@@ -9,6 +9,7 @@ export default function AddItemModal({ onSubmit }: AddItemModalProps) {
     const price = formData.get("price") as string;
     const pdfText = formData.get("pdfText") as string;
     const htsus = formData.get("htsus") as string;
+    const bgColor = formData.get("bgColor") as string;
 
     if (!name || !price || !pdfText || !htsus) {
       alert("All fields are required");
@@ -26,6 +27,7 @@ export default function AddItemModal({ onSubmit }: AddItemModalProps) {
       price: priceNum,
       pdf_text: pdfText,
       htsus,
+      bg_color: bgColor,
     });
 
     setIsOpen(false);
@@ -57,6 +59,11 @@ export default function AddItemModal({ onSubmit }: AddItemModalProps) {
           <div>
             <label>HTSUS:</label>
             <input type="text" name="htsus" required />
+          </div>
+
+          <div>
+            <label>Background Color:</label>
+            <input type="color" name="bgColor" defaultValue={"#f0f0f0"} />
           </div>
 
           <button type="submit">Submit</button>

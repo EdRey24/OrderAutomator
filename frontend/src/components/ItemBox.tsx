@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import type { ItemBoxProps } from "../interfaces/ItemBoxProps";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { getContrastText } from "../utils/contrast";
 
 export default function ItemBox({
   item,
@@ -10,6 +11,7 @@ export default function ItemBox({
   onQuantityChange,
   onEdit,
   onDelete,
+  isOverlay,
 }: ItemBoxProps) {
   const [inputValue, setInputValue] = useState<string>(quantity.toString());
 
@@ -27,16 +29,21 @@ export default function ItemBox({
     setInputValue(quantity.toString());
   }, [quantity]);
 
+  const bgColor = item.bg_color || "#f0f0f0";
+  const textColor = getContrastText(bgColor);
+
   const boxStyle = {
-    backgroundColor: "#f0f0f0", // fixed neutral color
+    backgroundColor: bgColor,
+    color: textColor,
     padding: "0.833vw",
     border: "1px solid #ccc",
     borderRadius: "4px",
     margin: "0.41vw",
     minWidth: "150px",
-    transform: CSS.Transform.toString(transform),
+    transform: isOverlay ? "scale(1.02)" : CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging && !isOverlay ? 0.5 : 1,
+    boxShadow: isOverlay ? "0 10px 20px rgba(0,0,0,0.2)" : "none",
   };
 
   const handleBlur = () => {
@@ -44,35 +51,37 @@ export default function ItemBox({
     if (!isNaN(parsed) && parsed >= 0) {
       onQuantityChange(item.id, parsed);
     } else {
-      // revert to current quantity
       setInputValue(quantity.toString());
     }
   };
 
   return (
     <div ref={setNodeRef} style={boxStyle}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "4px",
-          marginBottom: "8px",
-        }}
-      >
-        <button onClick={() => onEdit(item)} title="Edit item">
-          ✎
-        </button>
-        <button onClick={() => onDelete(item.id)} title="Delete item">
-          🗑
-        </button>
+      {!isOverlay && (
         <div
-          {...attributes}
-          {...listeners}
-          style={{ cursor: "grab", marginLeft: "auto", fontSize: "1.2rem" }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            marginBottom: "8px",
+          }}
         >
-          ⠿
+          <button onClick={() => onEdit(item)} title="Edit item">
+            ✎
+          </button>
+          <button onClick={() => onDelete(item.id)} title="Delete item">
+            🗑
+          </button>
+          <div
+            {...attributes}
+            {...listeners}
+            style={{ cursor: "grab", marginLeft: "auto", fontSize: "1.2rem" }}
+          >
+            ⠿
+          </div>
         </div>
-      </div>
+      )}
+
       <h3>{item.name}</h3>
       <p>${item.price.toFixed(2)}</p>
       <p>{item.pdf_text}</p>

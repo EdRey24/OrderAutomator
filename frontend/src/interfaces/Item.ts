@@ -4,4 +4,5 @@ export interface Item {
     price: number;
     pdf_text: string;
     htsus: string;
+    bg_color?: string;
 }

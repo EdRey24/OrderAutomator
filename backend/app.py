@@ -38,7 +38,8 @@ def init_db():
             price REAL NOT NULL,
             pdf_text TEXT NOT NULL,
             htsus TEXT NOT NULL,
-            display_order INTEGER DEFAULT 0 
+            display_order INTEGER DEFAULT 0,
+            bg_color TEXT DEFAULT '#f0f0f0'
         )
     """
     )
@@ -61,6 +62,12 @@ def init_db():
         """
         INSERT INTO user_settings (id)
         SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM user_settings WHERE id = 1)
+    """
+    )
+    cur.execute(
+        """
+        ALTER TABLE items
+        ADD COLUMN IF NOT EXISTS bg_color TEXT DEFAULT '#f0f0f0'
     """
     )
     conn.commit()
@@ -115,6 +122,7 @@ def add_item():
     price = data.get("price")
     pdf_text = data.get("pdf_text")
     htsus = data.get("htsus")
+    bg_color = data.get("bg_color", "#f0f0f0")
 
     if name is None or price is None or price < 0 or pdf_text is None or htsus is None:
         return {"error": "Missing or invalid fields"}, 400
@@ -122,8 +130,8 @@ def add_item():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO items (name, price, pdf_text, htsus) VALUES (%s, %s, %s, %s) RETURNING id",
-        (name, price, pdf_text, htsus),
+        "INSERT INTO items (name, price, pdf_text, htsus, bg_color) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+        (name, price, pdf_text, htsus, bg_color),
     )
     new_id = cur.fetchone()[0]
     conn.commit()
@@ -136,6 +144,7 @@ def add_item():
         "price": price,
         "pdf_text": pdf_text,
         "htsus": htsus,
+        "bg_color": bg_color,
     }
     return jsonify(new_item), 201
 
@@ -267,15 +276,34 @@ def update_item(item_id):
     price = data.get("price")
     pdf_text = data.get("pdf_text")
     htsus = data.get("htsus")
+    bg_color = data.get("bg_color")
 
     if name is None or price is None or price < 0 or pdf_text is None or htsus is None:
         return {"error": "Missing or invalid fields"}, 400
 
+    set_fields = []
+    values = []
+    set_fields.append("name = %s")
+    values.append(name)
+    set_fields.append("price = %s")
+    values.append(price)
+    set_fields.append("pdf_text = %s")
+    values.append(pdf_text)
+    set_fields.append("htsus = %s")
+    values.append(htsus)
+
+    if "bg_color" in data:
+        set_fields.append("bg_color = %s")
+        values.append(data["bg_color"])
+
+    values.append(item_id)
+    set_clause = ", ".join(set_fields)
+
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
-        "UPDATE items SET name = %s, price = %s, pdf_text = %s, htsus = %s WHERE id = %s",
-        (name, price, pdf_text, htsus, item_id),
+        f"UPDATE items SET {set_clause} WHERE id = %s",
+        values,
     )
     conn.commit()
     rows_affected = cur.rowcount
@@ -291,6 +319,7 @@ def update_item(item_id):
         "price": price,
         "pdf_text": pdf_text,
         "htsus": htsus,
+        "bg_color": bg_color,
     }
     return jsonify(updated_item), 200
 

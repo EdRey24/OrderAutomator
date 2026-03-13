@@ -11,6 +11,7 @@ export default function EditItemModal({
     const price = formData.get("price") as string;
     const pdfText = formData.get("pdfText") as string;
     const htsus = formData.get("htsus") as string;
+    const bgColor = formData.get("bgColor") as string;
 
     if (!name || !price || !pdfText || !htsus) {
       alert("All fields are required");
@@ -24,9 +25,21 @@ export default function EditItemModal({
     }
 
     if (item) {
-      onUpdate?.(item.id, { name, price: priceNum, pdf_text: pdfText, htsus });
+      onUpdate?.(item.id, {
+        name,
+        price: priceNum,
+        pdf_text: pdfText,
+        htsus,
+        bg_color: bgColor,
+      });
     } else {
-      onSave({ name, price: priceNum, pdf_text: pdfText, htsus });
+      onSave({
+        name,
+        price: priceNum,
+        pdf_text: pdfText,
+        htsus,
+        bg_color: bgColor,
+      });
     }
     onClose();
   };
@@ -71,6 +84,15 @@ export default function EditItemModal({
               type="text"
               name="htsus"
               defaultValue={item?.htsus || ""}
+              required
+            />
+          </div>
+          <div>
+            <label>Background Color:</label>
+            <input
+              type="color"
+              name="bgColor"
+              defaultValue={item?.bg_color || "#f0f0f0"}
               required
             />
           </div>
