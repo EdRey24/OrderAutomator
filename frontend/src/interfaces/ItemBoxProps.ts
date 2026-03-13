@@ -7,4 +7,5 @@ export interface ItemBoxProps {
     onQuantityChange: (id: number, newQuantity: number) => void;
     onEdit: (item: Item) => void;
     onDelete: (id: number) => void;
+    isOverlay?: boolean;
 }

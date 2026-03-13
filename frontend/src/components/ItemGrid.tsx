@@ -5,16 +5,19 @@ import {
   useSensor,
   DndContext,
   useSensors,
+  type DragStartEvent,
   type DragEndEvent,
+  DragOverlay,
 } from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
+  rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import ItemBox from "./ItemBox";
 import type { ItemGridProps } from "../interfaces/ItemGridProps";
+import { useState } from "react";
 
 export default function ItemGrid({
   items,
@@ -25,12 +28,18 @@ export default function ItemGrid({
   onDelete,
   onReorder,
 }: ItemGridProps) {
+  const [activeId, setActiveId] = useState<number | null>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as number);
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -42,15 +51,21 @@ export default function ItemGrid({
     onReorder?.(newItems.map((item) => item.id));
   };
 
+  const handleDragCancel = () => {
+    setActiveId(null);
+  };
+
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
       <SortableContext
         items={items.map((items) => items.id)}
-        strategy={verticalListSortingStrategy}
+        strategy={rectSortingStrategy}
       >
         <div style={{ display: "flex", flexWrap: "wrap" }}>
           {items.map((item) => (
@@ -66,6 +81,20 @@ export default function ItemGrid({
           ))}
         </div>
       </SortableContext>
+
+      <DragOverlay>
+        {activeId ? (
+          <ItemBox
+            item={items.find((item) => item.id === activeId)!}
+            quantity={quantities[activeId] || 0}
+            onAdd={onAdd}
+            onQuantityChange={onQuantityChange}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            isOverlay
+          />
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }
