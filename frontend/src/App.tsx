@@ -122,10 +122,12 @@ export default function App() {
   };
 
   const handleFinishOrder = async () => {
-    const orderItems = Object.entries(quantities).map(([id, qty]) => ({
-      id: parseInt(id),
-      quantity: qty,
-    }));
+    const orderItems = items
+      .filter((item) => quantities[item.id] > 0)
+      .map((item) => ({
+        id: item.id,
+        quantity: quantities[item.id],
+      }));
 
     if (orderItems.length === 0) {
       alert("No items in order");
